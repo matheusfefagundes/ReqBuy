@@ -192,6 +192,54 @@ Segurança em camadas
 
 ---
 
+## Análise de Riscos
+
+| Risco | Probabilidade | Impacto | Controle Aplicado |
+|---|:---:|:---:|---|
+| Força bruta na autenticação | Alta | Alto | Hash bcrypt (custo 12) + registro de tentativas falhas no log |
+| Token JWT comprometido | Média | Alto | Segredo longo em `.env`, expiração de 8h |
+| Acesso indevido de perfil inferior | Média | Alto | Middleware RBAC em todas as rotas protegidas |
+| Injeção de dados maliciosos (SQL/XSS) | Média | Alto | Validação Zod no servidor + queries parametrizadas (pg) |
+| Exposição de credenciais do banco | Baixa | Crítico | Variáveis em `.env` não versionado, `.gitignore` configurado |
+| Escalada de privilégio | Baixa | Alto | Verificação de perfil e dono do recurso em cada endpoint |
+| Acesso a logs por perfil errado | Baixa | Médio | Rota `/api/audit` restrita ao perfil `financeiro` |
+
+---
+
+## Plano de Logs de Auditoria
+
+Todos os eventos são registrados na tabela `audit_logs` com `user_id`, `action`, `resource`, `resource_id`, `ip_address` e `created_at`.
+
+| Evento | Ação registrada | Gatilho |
+|---|---|---|
+| Login bem-sucedido | `LOGIN` | POST /api/auth/login com credenciais válidas |
+| Falha de login | `LOGIN_FALHOU` | POST /api/auth/login com credenciais inválidas |
+| Cadastro de usuário | `CADASTRO` | POST /api/auth/register |
+| Criação de requisição | `CRIAR_REQUISICAO` | POST /api/requests |
+| Aprovação de requisição | `APROVADO_REQUISICAO` | POST /api/requests/:id/action |
+| Rejeição de requisição | `REJEITADO_REQUISICAO` | POST /api/requests/:id/action |
+| Tentativa de acesso não autorizado | `ACESSO_NAO_AUTORIZADO` | Aprovador tenta agir em setor diferente do seu |
+
+Consulta de logs disponível exclusivamente ao perfil **Financeiro** via `GET /api/audit`.
+
+---
+
+## Plano de Controles de Segurança
+
+| Controle | Categoria | Implementação |
+|---|---|---|
+| Hash de senhas | Autenticação | bcrypt com custo 12 e salt automático |
+| Tokens de sessão | Autenticação | JWT assinado com `JWT_SECRET`, validade de 8h |
+| Controle de acesso por perfil | Autorização | Middleware `authorize(...roles)` em todas as rotas |
+| Controle por dono do recurso | Autorização | Filtro de `requester_id` / `department_id` nas queries |
+| Validação de entrada | Integridade | Zod valida todos os corpos de requisição antes do banco |
+| Queries parametrizadas | Integridade | node-postgres com `$1, $2...` — sem interpolação de string |
+| Isolamento de segredos | Confidencialidade | Variáveis sensíveis em `.env` fora do versionamento |
+| CORS restrito | Confidencialidade | Apenas a origem do frontend é aceita pelo servidor |
+| Trilha de auditoria | Rastreabilidade | `logAudit()` chamado em cada ação crítica do sistema |
+
+---
+
 ## Ativos e Dados Sensíveis
 
 | Ativo | Localização | Risco | Controle aplicado |

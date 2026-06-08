@@ -1,8 +1,11 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
+import { mockRequests } from '../dev/mockRequests'
 
 export default function NewRequestPage() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -15,11 +18,15 @@ export default function NewRequestPage() {
     setError('')
     setLoading(true)
     try {
-      await api.post('/requests', {
-        title,
-        description,
-        amount: parseFloat(amount),
-      })
+      if (import.meta.env.DEV) {
+        mockRequests.create(
+          { title, description, amount: parseFloat(amount) },
+          { id: user!.id, name: user!.name, departmentId: 1 }
+        )
+        navigate('/requests')
+        return
+      }
+      await api.post('/requests', { title, description, amount: parseFloat(amount) })
       navigate('/requests')
     } catch {
       setError('Erro ao criar requisição. Verifique os dados e tente novamente.')
