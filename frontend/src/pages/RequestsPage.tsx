@@ -2,16 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-
-interface PurchaseRequest {
-  id: number
-  title: string
-  amount: number
-  status: string
-  requester_name: string
-  department_name: string
-  created_at: string
-}
+import { mockRequests, MockRequest } from '../dev/mockRequests'
 
 const statusLabel: Record<string, string> = {
   pendente: 'Pendente',
@@ -23,39 +14,34 @@ const statusLabel: Record<string, string> = {
 
 export default function RequestsPage() {
   const { user } = useAuth()
-  const [requests, setRequests] = useState<PurchaseRequest[]>([])
+  const [requests, setRequests] = useState<MockRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      setRequests(mockRequests.list(user!.id, user!.role, 1))
+      setLoading(false)
+      return
+    }
     api
-      .get<PurchaseRequest[]>('/requests')
+      .get<MockRequest[]>('/requests')
       .then((res) => setRequests(res.data))
       .catch(() => setError('Erro ao carregar requisições.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [user])
 
   async function handleAction(id: number, action: 'aprovado' | 'rejeitado') {
     const comment = window.prompt(`Comentário para ${action} (opcional):`) ?? undefined
+
+    if (import.meta.env.DEV) {
+      const newStatus = mockRequests.action(id, action, user!.role)
+      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)))
+      return
+    }
+
     try {
       await api.post(`/requests/${id}/action`, { action, comment })
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? {
-                ...r,
-                status:
-                  user?.role === 'aprovador'
-                    ? action === 'aprovado'
-                      ? 'aprovado_gestor'
-                      : 'rejeitado_gestor'
-                    : action === 'aprovado'
-                    ? 'aprovado_financeiro'
-                    : 'rejeitado_financeiro',
-              }
-            : r
-        )
-      )
     } catch {
       alert('Erro ao processar ação.')
     }
