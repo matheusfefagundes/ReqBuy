@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function LoginPage() {
@@ -55,6 +55,9 @@ export default function LoginPage() {
         <button type="submit" disabled={loading}>
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
+        <p style={{ textAlign: 'center', margin: 0 }}>
+          Não tem conta? <Link to="/register">Criar conta</Link>
+        </p>
       </form>
     </main>
   )
