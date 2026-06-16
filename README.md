@@ -240,6 +240,62 @@ Consulta de logs disponível exclusivamente ao perfil **Financeiro** via `GET /a
 
 ---
 
+## Como Executar
+
+### Pré-requisitos
+
+- Node.js 18+
+- PostgreSQL 14+
+
+### 1. Banco de dados
+
+```bash
+# Criar o banco
+psql -U postgres -c "CREATE DATABASE reqbuy;"
+
+# Aplicar o schema
+psql -U postgres -d reqbuy -f backend/src/db/schema.sql
+```
+
+### 2. Backend
+
+```bash
+# Na raiz do projeto
+cp backend/.env.example backend/.env
+# Editar backend/.env com as credenciais do banco e um JWT_SECRET seguro
+
+npm install
+npm run dev
+```
+
+O backend estará disponível em `http://localhost:3001`.
+
+### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+O frontend estará disponível em `http://localhost:5173`.
+
+---
+
+## Usuários de Teste
+
+Crie os usuários abaixo pela tela de cadastro (`/register`) ou via `POST /api/auth/register`. Os departamentos são inseridos automaticamente pelo `schema.sql`.
+
+| Nome | E-mail | Senha | Perfil | Departamento ID |
+|---|---|---|---|---|
+| Solicitante Teste | solicitante@reqbuy.dev | Senha@123 | `solicitante` | 1 (TI) |
+| Aprovador Teste | aprovador@reqbuy.dev | Senha@123 | `aprovador` | 1 (TI) |
+| Financeiro Teste | financeiro@reqbuy.dev | Senha@123 | `financeiro` | 3 (Financeiro) |
+
+> As senhas são armazenadas como hash bcrypt (custo 12). Nunca em texto puro.
+
+---
+
 ## Ativos e Dados Sensíveis
 
 | Ativo | Localização | Risco | Controle aplicado |
