@@ -73,16 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const newUser: User = { id: Date.now(), name: data.name, email: data.email, role: data.role }
       const token = `dev-token-${data.email}`
       DEV_USERS[data.email] = { password: data.password, token, user: newUser }
-      sessionStorage.setItem('token', token)
-      sessionStorage.setItem('user', JSON.stringify(newUser))
-      setUser(newUser)
+      // Do NOT auto-login — just register
       return
     }
 
-    const { data: resData } = await api.post<{ token: string; user: User }>('/auth/register', data)
-    sessionStorage.setItem('token', resData.token)
-    sessionStorage.setItem('user', JSON.stringify(resData.user))
-    setUser(resData.user)
+    await api.post('/auth/register', data)
+    // Do NOT auto-login — user must login after registration
   }
 
   function logout() {

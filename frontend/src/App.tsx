@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import ToastProvider from './components/ToastProvider'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
@@ -56,6 +57,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
+
+      <ToastProvider />
     </AuthProvider>
   )
 }

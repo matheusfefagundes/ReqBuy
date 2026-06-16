@@ -3,11 +3,11 @@ import cors from 'cors'
 import morgan from 'morgan'
 import dotenv from 'dotenv'
 
+dotenv.config()
+
 import authRoutes from './routes/auth'
 import requestRoutes from './routes/requests'
 import auditRoutes from './routes/audit'
-
-dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
