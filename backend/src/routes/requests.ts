@@ -99,7 +99,8 @@ router.post(
     }
 
     const user = req.user!
-    const requestId = parseInt(req.params.id, 10)
+    const idParam = req.params.id
+    const requestId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10)
     const { action, comment } = parsed.data
     const ip = req.ip ?? 'unknown'
 
