@@ -1,25 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import api from '../services/api'
 import Card from '../components/ui/Card'
 import InputField from '../components/ui/InputField'
 import Button from '../components/ui/Button'
-import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from 'sonner'
-import { ShoppingCart, User, Mail, Lock, Briefcase, Building2, ArrowRight } from 'lucide-react'
-
-interface Department {
-  id: number
-  name: string
-}
-
-const ROLES = [
-  { value: 'solicitante', label: 'Solicitante' },
-  { value: 'aprovador', label: 'Aprovador' },
-  { value: 'financeiro', label: 'Setor Financeiro' },
-]
+import { ShoppingCart, User, Mail, Lock, ArrowRight } from 'lucide-react'
 
 export default function RegisterPage() {
   const { register } = useAuth()
@@ -28,38 +15,13 @@ export default function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'solicitante' | 'aprovador' | 'financeiro'>('solicitante')
-  const [departmentId, setDepartmentId] = useState<number>(0)
-  const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(false)
-  const [loadingDepts, setLoadingDepts] = useState(true)
-
-  useEffect(() => {
-    api
-      .get<Department[]>('/departments')
-      .then((res) => {
-        setDepartments(res.data)
-        if (res.data.length > 0) setDepartmentId(res.data[0].id)
-      })
-      .catch(() => {
-        // Fallback para lista padrão se falhar
-        const fallback = [
-          { id: 1, name: 'TI' },
-          { id: 2, name: 'RH' },
-          { id: 3, name: 'Financeiro' },
-          { id: 4, name: 'Operações' },
-        ]
-        setDepartments(fallback)
-        setDepartmentId(1)
-      })
-      .finally(() => setLoadingDepts(false))
-  }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setLoading(true)
     try {
-      await register({ name, email, password, role, departmentId })
+      await register({ name, email, password })
       toast.success('Conta criada com sucesso! Faça login para continuar.')
       navigate('/login')
     } catch {
@@ -125,65 +87,6 @@ export default function RegisterPage() {
               placeholder="Mínimo 6 caracteres"
               icon={<Lock size={18} />}
             />
-
-            {/* Perfil e Setor */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">Perfil</label>
-                <div className="relative">
-                  <Briefcase
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-                  />
-                  <select
-                    id="register-role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as typeof role)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary text-sm
-                      appearance-none cursor-pointer
-                      focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
-                      transition-colors duration-200"
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">Setor</label>
-                <div className="relative">
-                  <Building2
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-                  />
-                  {loadingDepts ? (
-                    <div className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border flex items-center">
-                      <LoadingSpinner size={16} fullPage={false} />
-                    </div>
-                  ) : (
-                    <select
-                      id="register-department"
-                      value={departmentId}
-                      onChange={(e) => setDepartmentId(Number(e.target.value))}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary text-sm
-                        appearance-none cursor-pointer
-                        focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
-                        transition-colors duration-200"
-                    >
-                      {departments.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-            </div>
 
             <Button
               id="register-submit"

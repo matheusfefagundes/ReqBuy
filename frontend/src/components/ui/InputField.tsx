@@ -1,4 +1,6 @@
 import type { InputHTMLAttributes, TextareaHTMLAttributes, ReactNode } from 'react'
+import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 
 interface BaseProps {
   label: string
@@ -32,8 +34,13 @@ const inputClassNoIcon =
 
 export default function InputField(props: Props) {
   const { label, icon, error, hint, as = 'input', ...rest } = props
+  const [showPassword, setShowPassword] = useState(false)
 
   const id = (rest as { id?: string }).id ?? label.toLowerCase().replace(/\s+/g, '-')
+
+  const inputRest = rest as InputHTMLAttributes<HTMLInputElement>
+  const isPassword = as === 'input' && inputRest.type === 'password'
+  const currentType = isPassword ? (showPassword ? 'text' : 'password') : inputRest.type
 
   return (
     <div>
@@ -58,14 +65,29 @@ export default function InputField(props: Props) {
             {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
           />
         ) : (
-          <input
-            id={id}
-            className={[
-              icon ? inputClass : inputClassNoIcon,
-              error ? 'border-danger focus:border-danger focus:ring-danger/20' : '',
-            ].join(' ')}
-            {...(rest as InputHTMLAttributes<HTMLInputElement>)}
-          />
+          <>
+            <input
+              id={id}
+              {...(rest as InputHTMLAttributes<HTMLInputElement>)}
+              type={currentType}
+              className={[
+                icon ? inputClass : inputClassNoIcon,
+                isPassword ? 'pr-11' : '',
+                error ? 'border-danger focus:border-danger focus:ring-danger/20' : '',
+              ].join(' ')}
+            />
+            {isPassword && (
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors focus:outline-none"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            )}
+          </>
         )}
       </div>
       {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}

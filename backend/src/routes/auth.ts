@@ -7,12 +7,12 @@ import { logAudit } from '../services/audit'
 
 const router = Router()
 
+// Cadastro público: apenas solicitantes.
+// Aprovadores e financeiros são criados diretamente no banco (npm run db:seed).
 const registerSchema = z.object({
   name: z.string().min(3).max(150),
   email: z.email(),
   password: z.string().min(6),
-  role: z.enum(['solicitante', 'aprovador', 'financeiro']),
-  departmentId: z.number().int().positive(),
 })
 
 const loginSchema = z.object({
@@ -27,7 +27,10 @@ router.post('/register', async (req: Request, res: Response) => {
     return
   }
 
-  const { name, email, password, role, departmentId } = parsed.data
+  const { name, email, password } = parsed.data
+  // Perfil fixo: todo cadastro público é solicitante.
+  // Aprovadores e financeiros são provisionados pelo administrador via seed.
+  const ROLE_PADRAO = 'solicitante'
   const ip = req.ip ?? 'unknown'
 
   try {
@@ -41,12 +44,12 @@ router.post('/register', async (req: Request, res: Response) => {
     const result = await pool.query(
       `INSERT INTO usuarios (name, email, password_hash, role, department_id)
        VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role`,
-      [name, email, password_hash, role, departmentId]
+      [name, email, password_hash, ROLE_PADRAO, null]
     )
 
     const user = result.rows[0]
     const token = jwt.sign(
-      { id: user.id, role: user.role, departmentId },
+      { id: user.id, role: user.role, departmentId: null },
       process.env.JWT_SECRET!,
       { expiresIn: '8h' }
     )

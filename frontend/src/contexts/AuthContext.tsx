@@ -13,8 +13,6 @@ interface RegisterData {
   name: string
   email: string
   password: string
-  role: User['role']
-  departmentId: number
 }
 
 interface AuthContextValue {
