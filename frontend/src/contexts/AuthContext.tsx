@@ -2,24 +2,6 @@ import { createContext, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import api from '../services/api'
 
-const DEV_USERS: Record<string, { password: string; user: User; token: string }> = {
-  'solicitante@reqbuy.dev': {
-    password: '123456',
-    token: 'dev-token-solicitante',
-    user: { id: 1, name: 'Ana Solicitante', email: 'solicitante@reqbuy.dev', role: 'solicitante' },
-  },
-  'aprovador@reqbuy.dev': {
-    password: '123456',
-    token: 'dev-token-aprovador',
-    user: { id: 2, name: 'Bruno Aprovador', email: 'aprovador@reqbuy.dev', role: 'aprovador' },
-  },
-  'financeiro@reqbuy.dev': {
-    password: '123456',
-    token: 'dev-token-financeiro',
-    user: { id: 3, name: 'Carla Financeiro', email: 'financeiro@reqbuy.dev', role: 'financeiro' },
-  },
-}
-
 interface User {
   id: number
   name: string
@@ -51,14 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   async function login(email: string, password: string) {
-    if (import.meta.env.DEV && DEV_USERS[email]?.password === password) {
-      const mock = DEV_USERS[email]
-      sessionStorage.setItem('token', mock.token)
-      sessionStorage.setItem('user', JSON.stringify(mock.user))
-      setUser(mock.user)
-      return
-    }
-
     const { data } = await api.post<{ token: string; user: User }>('/auth/login', {
       email,
       password,
@@ -69,16 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(data: RegisterData) {
-    if (import.meta.env.DEV) {
-      const newUser: User = { id: Date.now(), name: data.name, email: data.email, role: data.role }
-      const token = `dev-token-${data.email}`
-      DEV_USERS[data.email] = { password: data.password, token, user: newUser }
-      // Do NOT auto-login — just register
-      return
-    }
-
     await api.post('/auth/register', data)
-    // Do NOT auto-login — user must login after registration
+    // Não faz auto-login — usuário deve logar após o cadastro
   }
 
   function logout() {
@@ -87,7 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

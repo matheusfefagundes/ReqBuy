@@ -87,11 +87,11 @@ O sistema implementa três níveis de privilégio:
 
 | Entidade | Descrição |
 |---|---|
-| `users` | Usuários do sistema com perfil RBAC e setor associado. |
-| `departments` | Setores / departamentos da organização. |
-| `purchase_requests` | Requisições de compra com status de aprovação em duas etapas (gestor → financeiro). |
-| `request_actions` | Histórico de ações (aprovação / rejeição) realizadas sobre cada requisição. |
-| `audit_logs` | Trilha de auditoria de todas as ações relevantes do sistema. |
+| `usuarios` | Usuários do sistema com perfil RBAC e setor associado. |
+| `departamentos` | Setores / departamentos da organização. |
+| `solicitacoes_compra` | Requisições de compra com status de aprovação em duas etapas (gestor → financeiro). |
+| `acoes_solicitacao` | Histórico de ações (aprovação / rejeição) realizadas sobre cada requisição. |
+| `logs_auditoria` | Trilha de auditoria de todas as ações relevantes do sistema. |
 
 ---
 
@@ -99,60 +99,68 @@ O sistema implementa três níveis de privilégio:
 
 ```sql
 -- Setores da organização
-CREATE TABLE departments (
+CREATE TABLE IF NOT EXISTS departamentos (
   id   SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL
+  name VARCHAR(100) NOT NULL UNIQUE
 );
 
 -- Usuários com perfil RBAC
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS usuarios (
   id            SERIAL PRIMARY KEY,
   name          VARCHAR(150) NOT NULL,
   email         VARCHAR(255) UNIQUE NOT NULL,
   password_hash TEXT        NOT NULL,
   role          VARCHAR(20) NOT NULL CHECK (role IN ('solicitante', 'aprovador', 'financeiro')),
-  department_id INTEGER     REFERENCES departments(id),
+  department_id INTEGER     REFERENCES departamentos(id),
   created_at    TIMESTAMP   DEFAULT NOW()
 );
 
 -- Requisições de compra (fluxo de duas aprovações)
-CREATE TABLE purchase_requests (
+CREATE TABLE IF NOT EXISTS solicitacoes_compra (
   id            SERIAL PRIMARY KEY,
-  title         VARCHAR(200)    NOT NULL,
-  description   TEXT            NOT NULL,
-  amount        DECIMAL(12, 2)  NOT NULL,
-  status        VARCHAR(30)     NOT NULL DEFAULT 'pendente'
+  title         VARCHAR(200)   NOT NULL,
+  description   TEXT           NOT NULL,
+  amount        DECIMAL(12, 2) NOT NULL,
+  status        VARCHAR(30)    NOT NULL DEFAULT 'pendente'
                   CHECK (status IN (
                     'pendente',
-                    'aprovado_gestor', 'rejeitado_gestor',
-                    'aprovado_financeiro', 'rejeitado_financeiro'
+                    'aprovado_gestor',    'rejeitado_gestor',
+                    'aprovado_financeiro','rejeitado_financeiro'
                   )),
-  requester_id  INTEGER NOT NULL REFERENCES users(id),
-  department_id INTEGER NOT NULL REFERENCES departments(id),
+  requester_id  INTEGER NOT NULL REFERENCES usuarios(id),
+  department_id INTEGER NOT NULL REFERENCES departamentos(id),
   created_at    TIMESTAMP DEFAULT NOW(),
   updated_at    TIMESTAMP DEFAULT NOW()
 );
 
 -- Histórico de ações sobre cada requisição
-CREATE TABLE request_actions (
+CREATE TABLE IF NOT EXISTS acoes_solicitacao (
   id         SERIAL PRIMARY KEY,
-  request_id INTEGER NOT NULL REFERENCES purchase_requests(id),
-  user_id    INTEGER NOT NULL REFERENCES users(id),
+  request_id INTEGER NOT NULL REFERENCES solicitacoes_compra(id),
+  user_id    INTEGER NOT NULL REFERENCES usuarios(id),
   action     VARCHAR(30) NOT NULL CHECK (action IN ('aprovado', 'rejeitado')),
   comment    TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Trilha de auditoria
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS logs_auditoria (
   id          SERIAL PRIMARY KEY,
-  user_id     INTEGER     REFERENCES users(id),
+  user_id     INTEGER     REFERENCES usuarios(id),
   action      VARCHAR(100) NOT NULL,
   resource    VARCHAR(100),
   resource_id INTEGER,
   ip_address  VARCHAR(45),
   created_at  TIMESTAMP DEFAULT NOW()
 );
+
+-- Departamentos iniciais (ON CONFLICT para ser idempotente)
+INSERT INTO departamentos (name) VALUES
+  ('TI'),
+  ('RH'),
+  ('Financeiro'),
+  ('Operações')
+ON CONFLICT (name) DO NOTHING;
 ```
 
 ---
@@ -245,25 +253,29 @@ Consulta de logs disponível exclusivamente ao perfil **Financeiro** via `GET /a
 ### Pré-requisitos
 
 - Node.js 18+
-- PostgreSQL 14+
+- Docker e Docker Compose (recomendado para o banco de dados)
 
-### 1. Banco de dados
+### 1. Banco de dados (Docker — recomendado)
 
 ```bash
-# Criar o banco
-psql -U postgres -c "CREATE DATABASE reqbuy;"
+# Iniciar o PostgreSQL via Docker
+docker compose up -d
 
-# Aplicar o schema
-psql -U postgres -d reqbuy -f backend/src/db/schema.sql
+# Aguardar o container ficar saudável (~10s) e inicializar o banco
+npm run db:init
+
+# Popular o banco com dados de teste (usuários + requisições de exemplo)
+npm run db:seed
 ```
 
 ### 2. Backend
 
 ```bash
-# Na raiz do projeto
-cp backend/.env.example backend/.env
-# Editar backend/.env com as credenciais do banco e um JWT_SECRET seguro
+# Na raiz do projeto — copiar e configurar o .env
+copy backend\.env.example .env
+# Editar .env se necessário (padrão funciona com o Docker Compose)
 
+# Instalar dependências e iniciar
 npm install
 npm run dev
 ```
@@ -274,7 +286,10 @@ O backend estará disponível em `http://localhost:3001`.
 
 ```bash
 cd frontend
+
+# Instalar dependências
 npm install
+
 npm run dev
 ```
 
@@ -282,17 +297,38 @@ O frontend estará disponível em `http://localhost:5173`.
 
 ---
 
+## Variáveis de Ambiente
+
+### Backend (`.env` na raiz do projeto)
+
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/reqbuy
+JWT_SECRET=<valor longo e aleatório>
+PORT=3001
+FRONTEND_URL=http://localhost:5173
+```
+
+### Frontend (`frontend/.env`)
+
+```
+VITE_API_URL=http://localhost:3001/api
+```
+
+---
+
 ## Usuários de Teste
 
-Crie os usuários abaixo pela tela de cadastro (`/register`) ou via `POST /api/auth/register`. Os departamentos são inseridos automaticamente pelo `schema.sql`.
+Execute `npm run db:seed` para criar automaticamente os usuários abaixo com senhas já hasheadas (bcrypt custo 12):
 
-| Nome | E-mail | Senha | Perfil | Departamento ID |
+| Nome | E-mail | Senha | Perfil | Departamento |
 |---|---|---|---|---|
-| Solicitante Teste | solicitante@reqbuy.dev | Senha@123 | `solicitante` | 1 (TI) |
-| Aprovador Teste | aprovador@reqbuy.dev | Senha@123 | `aprovador` | 1 (TI) |
-| Financeiro Teste | financeiro@reqbuy.dev | Senha@123 | `financeiro` | 3 (Financeiro) |
+| Ana Solicitante | solicitante@reqbuy.dev | `Senha@123` | `solicitante` | TI |
+| Bruno Aprovador | aprovador@reqbuy.dev | `Senha@123` | `aprovador` | TI |
+| Carla Financeiro | financeiro@reqbuy.dev | `Senha@123` | `financeiro` | Financeiro |
 
 > As senhas são armazenadas como hash bcrypt (custo 12). Nunca em texto puro.
+
+
 
 ---
 

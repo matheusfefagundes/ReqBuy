@@ -31,7 +31,7 @@ router.post('/register', async (req: Request, res: Response) => {
   const ip = req.ip ?? 'unknown'
 
   try {
-    const exists = await pool.query('SELECT id FROM users WHERE email = $1', [email])
+    const exists = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email])
     if (exists.rows.length > 0) {
       res.status(409).json({ error: 'E-mail já cadastrado' })
       return
@@ -39,7 +39,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const password_hash = await bcrypt.hash(password, 12)
     const result = await pool.query(
-      `INSERT INTO users (name, email, password_hash, role, department_id)
+      `INSERT INTO usuarios (name, email, password_hash, role, department_id)
        VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role`,
       [name, email, password_hash, role, departmentId]
     )
@@ -51,7 +51,7 @@ router.post('/register', async (req: Request, res: Response) => {
       { expiresIn: '8h' }
     )
 
-    await logAudit({ userId: user.id, action: 'CADASTRO', resource: 'users', resourceId: user.id, ip })
+    await logAudit({ userId: user.id, action: 'CADASTRO', resource: 'usuarios', resourceId: user.id, ip })
 
     res.status(201).json({ token, user })
   } catch (err) {
@@ -72,13 +72,13 @@ router.post('/login', async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      'SELECT id, name, email, password_hash, role, department_id FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, role, department_id FROM usuarios WHERE email = $1',
       [email]
     )
 
     const user = result.rows[0]
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-      await logAudit({ userId: null, action: 'LOGIN_FALHOU', resource: 'users', ip })
+      await logAudit({ userId: null, action: 'LOGIN_FALHOU', resource: 'usuarios', ip })
       res.status(401).json({ error: 'Credenciais inválidas' })
       return
     }
@@ -89,7 +89,7 @@ router.post('/login', async (req: Request, res: Response) => {
       { expiresIn: '8h' }
     )
 
-    await logAudit({ userId: user.id, action: 'LOGIN', resource: 'users', ip })
+    await logAudit({ userId: user.id, action: 'LOGIN', resource: 'usuarios', ip })
 
     res.json({
       token,

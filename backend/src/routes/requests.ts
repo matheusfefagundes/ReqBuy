@@ -30,14 +30,14 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO purchase_requests (title, description, amount, requester_id, department_id)
+      `INSERT INTO solicitacoes_compra (title, description, amount, requester_id, department_id)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [title, description, amount, user.id, user.departmentId]
     )
     await logAudit({
       userId: user.id,
       action: 'CRIAR_REQUISICAO',
-      resource: 'purchase_requests',
+      resource: 'solicitacoes_compra',
       resourceId: result.rows[0].id,
       ip,
     })
@@ -56,25 +56,25 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 
     if (user.role === 'solicitante') {
       query = `SELECT pr.*, u.name as requester_name, d.name as department_name
-               FROM purchase_requests pr
-               JOIN users u ON pr.requester_id = u.id
-               JOIN departments d ON pr.department_id = d.id
+               FROM solicitacoes_compra pr
+               JOIN usuarios u ON pr.requester_id = u.id
+               JOIN departamentos d ON pr.department_id = d.id
                WHERE pr.requester_id = $1
                ORDER BY pr.created_at DESC`
       params = [user.id]
     } else if (user.role === 'aprovador') {
       query = `SELECT pr.*, u.name as requester_name, d.name as department_name
-               FROM purchase_requests pr
-               JOIN users u ON pr.requester_id = u.id
-               JOIN departments d ON pr.department_id = d.id
+               FROM solicitacoes_compra pr
+               JOIN usuarios u ON pr.requester_id = u.id
+               JOIN departamentos d ON pr.department_id = d.id
                WHERE pr.department_id = $1
                ORDER BY pr.created_at DESC`
       params = [user.departmentId]
     } else {
       query = `SELECT pr.*, u.name as requester_name, d.name as department_name
-               FROM purchase_requests pr
-               JOIN users u ON pr.requester_id = u.id
-               JOIN departments d ON pr.department_id = d.id
+               FROM solicitacoes_compra pr
+               JOIN usuarios u ON pr.requester_id = u.id
+               JOIN departamentos d ON pr.department_id = d.id
                ORDER BY pr.created_at DESC`
       params = []
     }
@@ -105,7 +105,7 @@ router.post(
     const ip = req.ip ?? 'unknown'
 
     try {
-      const reqResult = await pool.query('SELECT * FROM purchase_requests WHERE id = $1', [requestId])
+      const reqResult = await pool.query('SELECT * FROM solicitacoes_compra WHERE id = $1', [requestId])
       const pr = reqResult.rows[0]
       if (!pr) {
         res.status(404).json({ error: 'Requisição não encontrada' })
@@ -117,7 +117,7 @@ router.post(
           await logAudit({
             userId: user.id,
             action: 'ACESSO_NAO_AUTORIZADO',
-            resource: 'purchase_requests',
+            resource: 'solicitacoes_compra',
             resourceId: requestId,
             ip,
           })
@@ -145,17 +145,17 @@ router.post(
           : 'rejeitado_financeiro'
 
       await pool.query(
-        'UPDATE purchase_requests SET status = $1, updated_at = NOW() WHERE id = $2',
+        'UPDATE solicitacoes_compra SET status = $1, updated_at = NOW() WHERE id = $2',
         [newStatus, requestId]
       )
       await pool.query(
-        'INSERT INTO request_actions (request_id, user_id, action, comment) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO acoes_solicitacao (request_id, user_id, action, comment) VALUES ($1, $2, $3, $4)',
         [requestId, user.id, action, comment ?? null]
       )
       await logAudit({
         userId: user.id,
         action: `${action.toUpperCase()}_REQUISICAO`,
-        resource: 'purchase_requests',
+        resource: 'solicitacoes_compra',
         resourceId: requestId,
         ip,
       })

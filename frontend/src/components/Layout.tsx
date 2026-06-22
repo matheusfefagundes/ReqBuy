@@ -34,8 +34,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-  { to: '/requests', icon: <FileText size={20} />, label: 'Requisicoes' },
-  { to: '/requests/new', icon: <FilePlus size={20} />, label: 'Nova Requisicao' },
+  { to: '/requests', icon: <FileText size={20} />, label: 'Requisições' },
+  { to: '/requests/new', icon: <FilePlus size={20} />, label: 'Nova Requisição' },
   { to: '/audit', icon: <ShieldCheck size={20} />, label: 'Auditoria', roles: ['financeiro'] },
 ]
 
@@ -74,7 +74,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <h1 className="text-lg font-bold text-text-primary tracking-tight">ReqBuy</h1>
-            <p className="text-xs text-text-muted">Requisicoes de Compra</p>
+            <p className="text-xs text-text-muted">Requisições de Compra</p>
           </div>
         </div>
 

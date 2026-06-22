@@ -1,23 +1,24 @@
 -- =============================================
 -- ReqBuy — Schema inicial do banco de dados
+-- Idempotente: seguro para re-executar (IF NOT EXISTS)
 -- =============================================
 
-CREATE TABLE departments (
+CREATE TABLE IF NOT EXISTS departamentos (
   id   SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL
+  name VARCHAR(100) NOT NULL UNIQUE
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS usuarios (
   id            SERIAL PRIMARY KEY,
   name          VARCHAR(150) NOT NULL,
   email         VARCHAR(255) UNIQUE NOT NULL,
   password_hash TEXT        NOT NULL,
   role          VARCHAR(20) NOT NULL CHECK (role IN ('solicitante', 'aprovador', 'financeiro')),
-  department_id INTEGER     REFERENCES departments(id),
+  department_id INTEGER     REFERENCES departamentos(id),
   created_at    TIMESTAMP   DEFAULT NOW()
 );
 
-CREATE TABLE purchase_requests (
+CREATE TABLE IF NOT EXISTS solicitacoes_compra (
   id            SERIAL PRIMARY KEY,
   title         VARCHAR(200)   NOT NULL,
   description   TEXT           NOT NULL,
@@ -28,24 +29,24 @@ CREATE TABLE purchase_requests (
                     'aprovado_gestor',    'rejeitado_gestor',
                     'aprovado_financeiro','rejeitado_financeiro'
                   )),
-  requester_id  INTEGER NOT NULL REFERENCES users(id),
-  department_id INTEGER NOT NULL REFERENCES departments(id),
+  requester_id  INTEGER NOT NULL REFERENCES usuarios(id),
+  department_id INTEGER NOT NULL REFERENCES departamentos(id),
   created_at    TIMESTAMP DEFAULT NOW(),
   updated_at    TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE request_actions (
+CREATE TABLE IF NOT EXISTS acoes_solicitacao (
   id         SERIAL PRIMARY KEY,
-  request_id INTEGER NOT NULL REFERENCES purchase_requests(id),
-  user_id    INTEGER NOT NULL REFERENCES users(id),
+  request_id INTEGER NOT NULL REFERENCES solicitacoes_compra(id),
+  user_id    INTEGER NOT NULL REFERENCES usuarios(id),
   action     VARCHAR(30) NOT NULL CHECK (action IN ('aprovado', 'rejeitado')),
   comment    TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS logs_auditoria (
   id          SERIAL PRIMARY KEY,
-  user_id     INTEGER     REFERENCES users(id),
+  user_id     INTEGER     REFERENCES usuarios(id),
   action      VARCHAR(100) NOT NULL,
   resource    VARCHAR(100),
   resource_id INTEGER,
@@ -53,5 +54,10 @@ CREATE TABLE audit_logs (
   created_at  TIMESTAMP DEFAULT NOW()
 );
 
--- Dados iniciais de exemplo
-INSERT INTO departments (name) VALUES ('TI'), ('RH'), ('Financeiro'), ('Operações');
+-- Departamentos iniciais (ON CONFLICT para ser idempotente)
+INSERT INTO departamentos (name) VALUES
+  ('TI'),
+  ('RH'),
+  ('Financeiro'),
+  ('Operações')
+ON CONFLICT (name) DO NOTHING;

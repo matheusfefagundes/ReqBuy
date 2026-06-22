@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { mockRequests } from '../dev/mockRequests'
-import type { MockRequest } from '../dev/mockRequests'
 import Layout from '../components/Layout'
+import StatCard from '../components/ui/StatCard'
+import LoadingSpinner from '../components/ui/LoadingSpinner'
+import StatusBadge from '../components/ui/StatusBadge'
 import {
   FileText,
   FilePlus,
@@ -12,7 +13,6 @@ import {
   CheckCircle2,
   TrendingUp,
   ArrowRight,
-  Loader2,
 } from 'lucide-react'
 
 const roleLabel: Record<string, string> = {
@@ -21,58 +21,66 @@ const roleLabel: Record<string, string> = {
   financeiro: 'Financeiro',
 }
 
+interface Requisicao {
+  id: number
+  title: string
+  description: string
+  amount: number
+  status: string
+  requester_name: string
+  department_name: string
+  requester_id: number
+  department_id: number
+  created_at: string
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
-  const [requests, setRequests] = useState<MockRequest[]>([])
+  const [requests, setRequests] = useState<Requisicao[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      setRequests(mockRequests.list(user!.id, user!.role, 1))
-      setLoading(false)
-      return
-    }
     api
-      .get<MockRequest[]>('/requests')
+      .get<Requisicao[]>('/requests')
       .then((res) => setRequests(res.data))
       .finally(() => setLoading(false))
-  }, [user])
+  }, [])
 
   const totalRequests = requests.length
   const pendingRequests = requests.filter((r) => r.status === 'pendente').length
-  const approvedRequests = requests.filter((r) =>
-    r.status === 'aprovado_gestor' || r.status === 'aprovado_financeiro'
+  const approvedRequests = requests.filter(
+    (r) => r.status === 'aprovado_gestor' || r.status === 'aprovado_financeiro'
   ).length
-  const totalValue = requests.reduce((acc, r) => acc + r.amount, 0)
+  const totalValue = requests.reduce((acc, r) => acc + Number(r.amount), 0)
 
   const stats = [
     {
-      label: 'Total de Requisicoes',
+      label: 'Total de Requisições',
       value: totalRequests,
       icon: <FileText size={22} />,
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
+      iconColor: 'text-accent',
+      iconBg: 'bg-accent/10',
     },
     {
       label: 'Pendentes',
       value: pendingRequests,
       icon: <Clock size={22} />,
-      color: 'text-warning',
-      bgColor: 'bg-warning-soft',
+      iconColor: 'text-warning',
+      iconBg: 'bg-warning-soft',
     },
     {
       label: 'Aprovadas',
       value: approvedRequests,
       icon: <CheckCircle2 size={22} />,
-      color: 'text-success',
-      bgColor: 'bg-success-soft',
+      iconColor: 'text-success',
+      iconBg: 'bg-success-soft',
     },
     {
       label: 'Valor Total',
       value: totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
       icon: <TrendingUp size={22} />,
-      color: 'text-info',
-      bgColor: 'bg-info-soft',
+      iconColor: 'text-info',
+      iconBg: 'bg-info-soft',
     },
   ]
 
@@ -80,57 +88,44 @@ export default function DashboardPage() {
     {
       to: '/requests/new',
       icon: <FilePlus size={24} />,
-      title: 'Nova Requisicao',
-      description: 'Criar uma nova requisicao de compra',
+      title: 'Nova Requisição',
+      description: 'Criar uma nova requisição de compra',
     },
     {
       to: '/requests',
       icon: <FileText size={24} />,
-      title: 'Ver Requisicoes',
-      description: 'Acompanhar status dos seus pedidos',
+      title: 'Ver Requisições',
+      description: 'Acompanhar o status dos pedidos',
     },
   ]
 
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
-        {/* Greeting */}
+
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1">
-            Ola, {user?.name?.split(' ')[0]}
+            Olá, {user?.name?.split(' ')[0]}
           </h1>
           <p className="text-text-secondary text-sm">
-            {roleLabel[user?.role ?? '']} - Aqui esta o resumo das suas requisicoes
+            Aqui está o resumo das suas requisições
           </p>
         </div>
 
-        {/* Stats */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 size={32} className="animate-spin text-accent" />
-          </div>
+          <LoadingSpinner />
         ) : (
           <>
+            {/* Estatísticas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {stats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="glass p-5 hover:bg-bg-card-hover transition-colors duration-200"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-text-muted text-sm">{stat.label}</span>
-                    <div className={`w-10 h-10 rounded-xl ${stat.bgColor} flex items-center justify-center ${stat.color}`}>
-                      {stat.icon}
-                    </div>
-                  </div>
-                  <p className="text-2xl font-bold text-text-primary">{stat.value}</p>
-                </div>
+                <StatCard key={stat.label} {...stat} />
               ))}
             </div>
 
-            {/* Quick Actions */}
+            {/* Ações rápidas */}
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-text-primary mb-4">Acoes Rapidas</h2>
+              <h2 className="text-lg font-semibold text-text-primary mb-4">Ações Rápidas</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {quickActions.map((action) => (
                   <Link
@@ -147,17 +142,20 @@ export default function DashboardPage() {
                       <p className="text-sm font-semibold text-text-primary">{action.title}</p>
                       <p className="text-xs text-text-muted mt-0.5">{action.description}</p>
                     </div>
-                    <ArrowRight size={18} className="text-text-muted group-hover:text-accent transition-colors duration-200" />
+                    <ArrowRight
+                      size={18}
+                      className="text-text-muted group-hover:text-accent transition-colors duration-200"
+                    />
                   </Link>
                 ))}
               </div>
             </div>
 
-            {/* Recent Requests */}
+            {/* Requisições recentes */}
             {requests.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-text-primary">Requisicoes Recentes</h2>
+                  <h2 className="text-lg font-semibold text-text-primary">Requisições Recentes</h2>
                   <Link
                     to="/requests"
                     className="text-sm text-accent hover:text-accent-hover transition-colors no-underline flex items-center gap-1"
@@ -173,23 +171,22 @@ export default function DashboardPage() {
                         className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-2 h-2 rounded-full shrink-0"
-                            style={{
-                              backgroundColor:
-                                req.status === 'pendente' ? '#f59e0b' :
-                                req.status.includes('aprovado') ? '#22c55e' : '#ef4444'
-                            }}
-                          />
-                          <div className="min-w-0">
+                          <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-text-primary truncate">{req.title}</p>
                             <p className="text-xs text-text-muted mt-0.5">
                               {new Date(req.created_at).toLocaleDateString('pt-BR')}
                             </p>
                           </div>
                         </div>
-                        <span className="text-sm font-semibold text-text-primary shrink-0 ml-4">
-                          {req.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
+                        <div className="flex items-center gap-3 shrink-0 ml-4">
+                          <StatusBadge status={req.status} />
+                          <span className="text-sm font-semibold text-text-primary">
+                            {Number(req.amount).toLocaleString('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            })}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>

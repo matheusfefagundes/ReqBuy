@@ -1,16 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import api from '../services/api'
+import Card from '../components/ui/Card'
+import InputField from '../components/ui/InputField'
+import Button from '../components/ui/Button'
+import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from 'sonner'
-import { ShoppingCart, User, Mail, Lock, Briefcase, Building2, ArrowRight, Loader2 } from 'lucide-react'
+import { ShoppingCart, User, Mail, Lock, Briefcase, Building2, ArrowRight } from 'lucide-react'
 
-const DEPARTMENTS = [
-  { id: 1, name: 'TI' },
-  { id: 2, name: 'RH' },
-  { id: 3, name: 'Financeiro' },
-  { id: 4, name: 'Operacoes' },
-]
+interface Department {
+  id: number
+  name: string
+}
 
 const ROLES = [
   { value: 'solicitante', label: 'Solicitante' },
@@ -26,15 +29,38 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<'solicitante' | 'aprovador' | 'financeiro'>('solicitante')
-  const [departmentId, setDepartmentId] = useState(1)
+  const [departmentId, setDepartmentId] = useState<number>(0)
+  const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingDepts, setLoadingDepts] = useState(true)
+
+  useEffect(() => {
+    api
+      .get<Department[]>('/departments')
+      .then((res) => {
+        setDepartments(res.data)
+        if (res.data.length > 0) setDepartmentId(res.data[0].id)
+      })
+      .catch(() => {
+        // Fallback para lista padrão se falhar
+        const fallback = [
+          { id: 1, name: 'TI' },
+          { id: 2, name: 'RH' },
+          { id: 3, name: 'Financeiro' },
+          { id: 4, name: 'Operações' },
+        ]
+        setDepartments(fallback)
+        setDepartmentId(1)
+      })
+      .finally(() => setLoadingDepts(false))
+  }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setLoading(true)
     try {
       await register({ name, email, password, role, departmentId })
-      toast.success('Conta criada com sucesso! Faca login para continuar.')
+      toast.success('Conta criada com sucesso! Faça login para continuar.')
       navigate('/login')
     } catch {
       toast.error('Erro ao criar conta. Verifique os dados e tente novamente.')
@@ -55,82 +81,60 @@ export default function RegisterPage() {
           <p className="text-text-secondary mt-1 text-sm">Criar sua conta</p>
         </div>
 
-        {/* Card */}
-        <div className="glass p-8 shadow-2xl">
+        <Card padding="lg">
           <h2 className="text-xl font-semibold text-text-primary mb-1">Cadastre-se</h2>
           <p className="text-text-muted text-sm mb-6">Preencha os dados para criar sua conta</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">Nome completo</label>
-              <div className="relative">
-                <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                <input
-                  id="register-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  minLength={3}
-                  placeholder="Seu nome completo"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary
-                    placeholder:text-text-muted/50 text-sm
-                    focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
-                    transition-colors duration-200"
-                />
-              </div>
-            </div>
+            <InputField
+              id="register-name"
+              label="Nome completo"
+              as="input"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              minLength={3}
+              placeholder="Seu nome completo"
+              icon={<User size={18} />}
+            />
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">E-mail</label>
-              <div className="relative">
-                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                <input
-                  id="register-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  placeholder="seu@email.com"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary
-                    placeholder:text-text-muted/50 text-sm
-                    focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
-                    transition-colors duration-200"
-                />
-              </div>
-            </div>
+            <InputField
+              id="register-email"
+              label="E-mail"
+              as="input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="seu@email.com"
+              icon={<Mail size={18} />}
+            />
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">Senha</label>
-              <div className="relative">
-                <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                <input
-                  id="register-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  placeholder="Minimo 6 caracteres"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary
-                    placeholder:text-text-muted/50 text-sm
-                    focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
-                    transition-colors duration-200"
-                />
-              </div>
-            </div>
+            <InputField
+              id="register-password"
+              label="Senha"
+              as="input"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              autoComplete="new-password"
+              placeholder="Mínimo 6 caracteres"
+              icon={<Lock size={18} />}
+            />
 
-            {/* Role and Department row */}
+            {/* Perfil e Setor */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">Perfil</label>
                 <div className="relative">
-                  <Briefcase size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                  <Briefcase
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                  />
                   <select
                     id="register-role"
                     value={role}
@@ -141,7 +145,9 @@ export default function RegisterPage() {
                       transition-colors duration-200"
                   >
                     {ROLES.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -150,53 +156,51 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">Setor</label>
                 <div className="relative">
-                  <Building2 size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-                  <select
-                    id="register-department"
-                    value={departmentId}
-                    onChange={(e) => setDepartmentId(Number(e.target.value))}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary text-sm
-                      appearance-none cursor-pointer
-                      focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
-                      transition-colors duration-200"
-                  >
-                    {DEPARTMENTS.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
+                  <Building2
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                  />
+                  {loadingDepts ? (
+                    <div className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border flex items-center">
+                      <LoadingSpinner size={16} fullPage={false} />
+                    </div>
+                  ) : (
+                    <select
+                      id="register-department"
+                      value={departmentId}
+                      onChange={(e) => setDepartmentId(Number(e.target.value))}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary text-sm
+                        appearance-none cursor-pointer
+                        focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
+                        transition-colors duration-200"
+                    >
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Submit */}
-            <button
+            <Button
               id="register-submit"
               type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl
-                bg-accent text-black font-semibold text-sm
-                hover:bg-accent-hover
-                active:scale-[0.98] transition-colors duration-200
-                disabled:opacity-50 disabled:cursor-not-allowed
-                cursor-pointer border-0 mt-2"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+              icon={<ArrowRight size={18} />}
+              className="mt-2"
             >
-              {loading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Criando conta...
-                </>
-              ) : (
-                <>
-                  Criar conta
-                  <ArrowRight size={18} />
-                </>
-              )}
-            </button>
+              {!loading && 'Criar conta'}
+            </Button>
           </form>
 
-          {/* Login link */}
           <p className="text-center text-sm text-text-muted mt-6">
-            Ja tem conta?{' '}
+            Já tem conta?{' '}
             <Link
               to="/login"
               className="text-accent hover:text-accent-hover font-medium transition-colors no-underline"
@@ -204,7 +208,7 @@ export default function RegisterPage() {
               Entrar
             </Link>
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   )
