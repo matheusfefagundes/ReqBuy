@@ -13,6 +13,7 @@ interface RegisterData {
   name: string
   email: string
   password: string
+  departmentId: number
 }
 
 interface AuthContextValue {

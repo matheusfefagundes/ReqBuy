@@ -13,6 +13,7 @@ const registerSchema = z.object({
   name: z.string().min(3).max(150),
   email: z.email(),
   password: z.string().min(6),
+  departmentId: z.number().int().positive(),
 })
 
 const loginSchema = z.object({
@@ -27,7 +28,7 @@ router.post('/register', async (req: Request, res: Response) => {
     return
   }
 
-  const { name, email, password } = parsed.data
+  const { name, email, password, departmentId } = parsed.data
   // Perfil fixo: todo cadastro público é solicitante.
   // Aprovadores e financeiros são provisionados pelo administrador via seed.
   const ROLE_PADRAO = 'solicitante'
@@ -43,13 +44,13 @@ router.post('/register', async (req: Request, res: Response) => {
     const password_hash = await bcrypt.hash(password, 12)
     const result = await pool.query(
       `INSERT INTO usuarios (name, email, password_hash, role, department_id)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role`,
-      [name, email, password_hash, ROLE_PADRAO, null]
+       VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, department_id`,
+      [name, email, password_hash, ROLE_PADRAO, departmentId]
     )
 
     const user = result.rows[0]
     const token = jwt.sign(
-      { id: user.id, role: user.role, departmentId: null },
+      { id: user.id, role: user.role, departmentId: user.department_id },
       process.env.JWT_SECRET!,
       { expiresIn: '8h' }
     )
