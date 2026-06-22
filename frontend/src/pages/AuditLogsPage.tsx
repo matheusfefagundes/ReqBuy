@@ -13,6 +13,8 @@ import {
   Activity,
   Hash,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 
 interface LogAuditoria {
@@ -42,6 +44,12 @@ export default function AuditLogsPage() {
   const [logs, setLogs] = useState<LogAuditoria[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const itemsPerPage = 10
+  const totalPages = Math.ceil(logs.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const currentLogs = logs.slice(startIndex, startIndex + itemsPerPage)
 
   useEffect(() => {
     api
@@ -116,7 +124,7 @@ export default function AuditLogsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {logs.map((log) => {
+                  {currentLogs.map((log) => {
                     const config = actionConfig[log.action] ?? { variant: 'neutral' as ActionVariant }
                     return (
                       <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
@@ -155,6 +163,34 @@ export default function AuditLogsPage() {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-4 border-t border-border">
+                <span className="text-sm text-text-secondary">
+                  Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, logs.length)} de {logs.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1.5 rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label="Página anterior"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className="text-sm text-text-primary font-medium px-2">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1.5 rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label="Próxima página"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

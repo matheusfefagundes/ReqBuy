@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   password_hash TEXT        NOT NULL,
   role          VARCHAR(20) NOT NULL CHECK (role IN ('solicitante', 'aprovador', 'financeiro')),
   department_id INTEGER     REFERENCES departamentos(id),
-  created_at    TIMESTAMP   DEFAULT NOW()
+  created_at    TIMESTAMPTZ   DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS solicitacoes_compra (
@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS solicitacoes_compra (
                   )),
   requester_id  INTEGER NOT NULL REFERENCES usuarios(id),
   department_id INTEGER NOT NULL REFERENCES departamentos(id),
-  created_at    TIMESTAMP DEFAULT NOW(),
-  updated_at    TIMESTAMP DEFAULT NOW()
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS acoes_solicitacao (
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS acoes_solicitacao (
   user_id    INTEGER NOT NULL REFERENCES usuarios(id),
   action     VARCHAR(30) NOT NULL CHECK (action IN ('aprovado', 'rejeitado')),
   comment    TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS logs_auditoria (
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS logs_auditoria (
   resource    VARCHAR(100),
   resource_id INTEGER,
   ip_address  VARCHAR(45),
-  created_at  TIMESTAMP DEFAULT NOW()
+  created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Departamentos iniciais (ON CONFLICT para ser idempotente)
