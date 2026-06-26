@@ -284,8 +284,9 @@ npm run db:seed
 
 ```bash
 # Na raiz do projeto — copiar e configurar o .env
-copy backend\.env.example .env
-# Editar .env se necessário (padrão funciona com o Docker Compose)
+copy .env.example .env   # (Windows)
+# cp .env.example .env   # (Linux/macOS)
+# Editar .env se necessário (padrão funciona com o Docker Compose local)
 
 # Instalar dependências e iniciar
 npm install
