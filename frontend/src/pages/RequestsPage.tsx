@@ -17,6 +17,12 @@ import {
   XCircle,
   Clock,
   MessageSquare,
+  Pencil,
+  Trash2,
+  AlertTriangle,
+  FileText,
+  AlignLeft,
+  DollarSign,
 } from 'lucide-react'
 
 interface Requisicao {
@@ -38,12 +44,26 @@ export default function RequestsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Modal de ação
+  // Modal de ação (aprovar/rejeitar)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalAction, setModalAction] = useState<'aprovado' | 'rejeitado'>('aprovado')
   const [modalRequestId, setModalRequestId] = useState<number>(0)
   const [modalComment, setModalComment] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+
+  // Modal de edição
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editId, setEditId] = useState<number>(0)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editAmount, setEditAmount] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
+
+  // Modal de exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState<number>(0)
+  const [deleteTitle, setDeleteTitle] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   function fetchRequests(showLoading = true) {
     if (showLoading) setLoading(true)
@@ -74,6 +94,7 @@ export default function RequestsPage() {
     }
   }, [])
 
+  // ─── Aprovar / Rejeitar ────────────────────────────────────────────────────
   function openActionModal(id: number, action: 'aprovado' | 'rejeitado') {
     setModalRequestId(id)
     setModalAction(action)
@@ -94,13 +115,92 @@ export default function RequestsPage() {
           : 'Requisição rejeitada.'
       )
       fetchRequests(false)
-    } catch {
-      toast.error('Erro ao processar ação.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } }
+      if (axiosErr?.response?.status === 403) {
+        toast.error(axiosErr.response.data?.error ?? 'Você não tem permissão para esta ação.')
+      } else {
+        toast.error('Erro ao processar ação.')
+      }
     } finally {
       setActionLoading(false)
       setModalOpen(false)
     }
   }
+
+  // ─── Editar ────────────────────────────────────────────────────────────────
+  function openEditModal(r: Requisicao) {
+    setEditId(r.id)
+    setEditTitle(r.title)
+    setEditDescription(r.description)
+    setEditAmount(String(r.amount))
+    setEditModalOpen(true)
+  }
+
+  async function handleEdit() {
+    setEditLoading(true)
+    try {
+      await api.put(`/requests/${editId}`, {
+        title: editTitle,
+        description: editDescription,
+        amount: parseFloat(editAmount),
+      })
+      toast.success('Requisição atualizada com sucesso!')
+      fetchRequests(false)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } }
+      if (axiosErr?.response?.status === 403) {
+        toast.error(axiosErr.response.data?.error ?? 'Você não tem permissão para editar esta requisição.')
+      } else if (axiosErr?.response?.status === 400) {
+        toast.error(axiosErr.response.data?.error ?? 'Não foi possível editar a requisição.')
+      } else {
+        toast.error('Erro ao atualizar requisição.')
+      }
+    } finally {
+      setEditLoading(false)
+      setEditModalOpen(false)
+    }
+  }
+
+  // ─── Excluir ───────────────────────────────────────────────────────────────
+  function openDeleteModal(r: Requisicao) {
+    setDeleteId(r.id)
+    setDeleteTitle(r.title)
+    setDeleteModalOpen(true)
+  }
+
+  async function handleDelete() {
+    setDeleteLoading(true)
+    try {
+      await api.delete(`/requests/${deleteId}`)
+      toast.success('Requisição excluída com sucesso!')
+      fetchRequests(false)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } }
+      if (axiosErr?.response?.status === 403) {
+        toast.error(axiosErr.response.data?.error ?? 'Você não tem permissão para excluir esta requisição.')
+      } else if (axiosErr?.response?.status === 400) {
+        toast.error(axiosErr.response.data?.error ?? 'Não foi possível excluir a requisição.')
+      } else {
+        toast.error('Erro ao excluir requisição.')
+      }
+    } finally {
+      setDeleteLoading(false)
+      setDeleteModalOpen(false)
+    }
+  }
+
+  // ─── Permissões para botões ────────────────────────────────────────────────
+  const canActOnRequest = (r: Requisicao) =>
+    (user?.role === 'aprovador' && r.status === 'pendente') ||
+    (user?.role === 'financeiro' && r.status === 'aprovado_gestor')
+
+  const canEditRequest = (r: Requisicao) =>
+    r.requester_id === user?.id && r.status === 'pendente'
+
+  const canDeleteRequest = (r: Requisicao) =>
+    (r.requester_id === user?.id && r.status === 'pendente') ||
+    user?.role === 'financeiro'
 
   if (loading) {
     return (
@@ -117,10 +217,6 @@ export default function RequestsPage() {
       </Layout>
     )
   }
-
-  const canActOnRequest = (r: Requisicao) =>
-    (user?.role === 'aprovador' && r.status === 'pendente') ||
-    (user?.role === 'financeiro' && r.status === 'aprovado_gestor')
 
   return (
     <Layout>
@@ -181,11 +277,9 @@ export default function RequestsPage() {
                     <th className="text-left text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-4">
                       Status
                     </th>
-                    {(user?.role === 'aprovador' || user?.role === 'financeiro') && (
-                      <th className="text-right text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-4">
-                        Ações
-                      </th>
-                    )}
+                    <th className="text-right text-xs font-semibold text-text-muted uppercase tracking-wider px-5 py-4">
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -219,10 +313,37 @@ export default function RequestsPage() {
                       <td className="px-5 py-4">
                         <StatusBadge status={r.status} />
                       </td>
-                      {(user?.role === 'aprovador' || user?.role === 'financeiro') && (
-                        <td className="px-5 py-4">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Editar — só o dono com status pendente */}
+                          {canEditRequest(r) && (
+                            <button
+                              onClick={() => openEditModal(r)}
+                              title="Editar requisição"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                                text-info bg-info-soft hover:bg-info/20 transition-colors
+                                cursor-pointer border-0"
+                            >
+                              <Pencil size={14} /> Editar
+                            </button>
+                          )}
+
+                          {/* Excluir — dono (pendente) ou financeiro */}
+                          {canDeleteRequest(r) && (
+                            <button
+                              onClick={() => openDeleteModal(r)}
+                              title="Excluir requisição"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                                text-danger bg-danger-soft hover:bg-danger/20 transition-colors
+                                cursor-pointer border-0"
+                            >
+                              <Trash2 size={14} /> Excluir
+                            </button>
+                          )}
+
+                          {/* Aprovar / Rejeitar — aprovador e financeiro */}
                           {canActOnRequest(r) && (
-                            <div className="flex items-center justify-end gap-2">
+                            <>
                               <button
                                 onClick={() => openActionModal(r.id, 'aprovado')}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
@@ -239,10 +360,10 @@ export default function RequestsPage() {
                               >
                                 <XCircle size={14} /> Rejeitar
                               </button>
-                            </div>
+                            </>
                           )}
-                        </td>
-                      )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -252,7 +373,7 @@ export default function RequestsPage() {
         )}
       </div>
 
-      {/* Modal de confirmação */}
+      {/* ─── Modal de Aprovar / Rejeitar ──────────────────────────────────────── */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -309,6 +430,154 @@ export default function RequestsPage() {
           >
             {!actionLoading &&
               (modalAction === 'aprovado' ? 'Confirmar Aprovação' : 'Confirmar Rejeição')}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ─── Modal de Edição ──────────────────────────────────────────────────── */}
+      <Modal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        disabled={editLoading}
+      >
+        <div className="flex items-center gap-3 mb-5 pr-8">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-info-soft text-info">
+            <Pencil size={22} />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary">
+              Editar Requisição
+            </h3>
+            <p className="text-xs text-text-muted">Altere os dados da requisição pendente</p>
+          </div>
+        </div>
+
+        <div className="space-y-4 mb-5">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">Título</label>
+            <div className="relative">
+              <FileText size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                required
+                minLength={3}
+                maxLength={200}
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary
+                  placeholder:text-text-muted/50 text-sm
+                  focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
+                  transition-colors duration-200"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">Descrição / Justificativa</label>
+            <div className="relative">
+              <AlignLeft size={18} className="absolute left-3 top-3 text-text-muted" />
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                required
+                minLength={10}
+                rows={3}
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary
+                  placeholder:text-text-muted/50 text-sm resize-none
+                  focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
+                  transition-colors duration-200"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">Valor (R$)</label>
+            <div className="relative">
+              <DollarSign size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+              <input
+                type="number"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                required
+                min="0.01"
+                step="0.01"
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-bg-input border border-border text-text-primary
+                  placeholder:text-text-muted/50 text-sm
+                  focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-accent/20
+                  transition-colors duration-200"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            size="md"
+            fullWidth
+            onClick={() => setEditModalOpen(false)}
+            disabled={editLoading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            fullWidth
+            loading={editLoading}
+            onClick={handleEdit}
+          >
+            {!editLoading && 'Salvar Alterações'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ─── Modal de Exclusão ────────────────────────────────────────────────── */}
+      <Modal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        disabled={deleteLoading}
+      >
+        <div className="flex items-center gap-3 mb-4 pr-8">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-danger-soft text-danger">
+            <AlertTriangle size={22} />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary">
+              Excluir Requisição
+            </h3>
+            <p className="text-xs text-text-muted">Esta ação não pode ser desfeita</p>
+          </div>
+        </div>
+
+        <div className="glass p-4 rounded-xl mb-5">
+          <p className="text-sm text-text-secondary">
+            Tem certeza que deseja excluir a requisição{' '}
+            <strong className="text-text-primary">"{deleteTitle}"</strong>?
+          </p>
+          <p className="text-xs text-text-muted mt-2">
+            Todos os dados e ações associadas a esta requisição serão removidos permanentemente.
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            size="md"
+            fullWidth
+            onClick={() => setDeleteModalOpen(false)}
+            disabled={deleteLoading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            size="md"
+            fullWidth
+            loading={deleteLoading}
+            onClick={handleDelete}
+          >
+            {!deleteLoading && 'Confirmar Exclusão'}
           </Button>
         </div>
       </Modal>

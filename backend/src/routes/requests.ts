@@ -13,11 +13,18 @@ const createSchema = z.object({
   amount: z.number().positive(),
 })
 
+const updateSchema = z.object({
+  title: z.string().min(3).max(200),
+  description: z.string().min(10),
+  amount: z.number().positive(),
+})
+
 const actionSchema = z.object({
   action: z.enum(['aprovado', 'rejeitado']),
   comment: z.string().optional(),
 })
 
+// ─── CREATE ──────────────────────────────────────────────────────────────────
 router.post('/', authenticate, csrfProtection, async (req: AuthRequest, res: Response) => {
   const parsed = createSchema.safeParse(req.body)
   if (!parsed.success) {
@@ -50,6 +57,7 @@ router.post('/', authenticate, csrfProtection, async (req: AuthRequest, res: Res
   }
 })
 
+// ─── READ ────────────────────────────────────────────────────────────────────
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   const user = req.user!
   try {
@@ -89,6 +97,131 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   }
 })
 
+// ─── UPDATE ──────────────────────────────────────────────────────────────────
+// Somente o dono da requisição pode editar, e apenas quando status = 'pendente'
+router.put('/:id', authenticate, csrfProtection, async (req: AuthRequest, res: Response) => {
+  const parsed = updateSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() })
+    return
+  }
+
+  const user = req.user!
+  const idParam = req.params.id
+  const requestId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10)
+  const { title, description, amount } = parsed.data
+  const ip = req.ip ?? 'unknown'
+
+  try {
+    const reqResult = await pool.query('SELECT * FROM solicitacoes_compra WHERE id = $1', [requestId])
+    const pr = reqResult.rows[0]
+
+    if (!pr) {
+      res.status(404).json({ error: 'Requisição não encontrada' })
+      return
+    }
+
+    // Apenas o dono pode editar
+    if (pr.requester_id !== user.id) {
+      await logAudit({
+        userId: user.id,
+        action: 'ACESSO_NAO_AUTORIZADO',
+        resource: 'solicitacoes_compra',
+        resourceId: requestId,
+        ip,
+      })
+      res.status(403).json({ error: 'Você não tem permissão para editar esta requisição.' })
+      return
+    }
+
+    // Somente requisições pendentes podem ser editadas
+    if (pr.status !== 'pendente') {
+      res.status(400).json({ error: 'Apenas requisições com status "pendente" podem ser editadas.' })
+      return
+    }
+
+    const result = await pool.query(
+      `UPDATE solicitacoes_compra
+       SET title = $1, description = $2, amount = $3, updated_at = NOW()
+       WHERE id = $4
+       RETURNING id, title, description, amount, status, requester_id, department_id, created_at, updated_at`,
+      [title, description, amount, requestId]
+    )
+
+    await logAudit({
+      userId: user.id,
+      action: 'EDITAR_REQUISICAO',
+      resource: 'solicitacoes_compra',
+      resourceId: requestId,
+      ip,
+    })
+
+    res.json(result.rows[0])
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Erro interno do servidor' })
+  }
+})
+
+// ─── DELETE ──────────────────────────────────────────────────────────────────
+// Dono pode excluir quando status = 'pendente'. Financeiro pode excluir qualquer.
+router.delete('/:id', authenticate, csrfProtection, async (req: AuthRequest, res: Response) => {
+  const user = req.user!
+  const idParam = req.params.id
+  const requestId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10)
+  const ip = req.ip ?? 'unknown'
+
+  try {
+    const reqResult = await pool.query('SELECT * FROM solicitacoes_compra WHERE id = $1', [requestId])
+    const pr = reqResult.rows[0]
+
+    if (!pr) {
+      res.status(404).json({ error: 'Requisição não encontrada' })
+      return
+    }
+
+    const isOwner = pr.requester_id === user.id
+    const isFinanceiro = user.role === 'financeiro'
+
+    // Somente o dono (pendente) ou financeiro pode excluir
+    if (!isOwner && !isFinanceiro) {
+      await logAudit({
+        userId: user.id,
+        action: 'ACESSO_NAO_AUTORIZADO',
+        resource: 'solicitacoes_compra',
+        resourceId: requestId,
+        ip,
+      })
+      res.status(403).json({ error: 'Você não tem permissão para excluir esta requisição.' })
+      return
+    }
+
+    // Dono só pode excluir pendentes
+    if (isOwner && !isFinanceiro && pr.status !== 'pendente') {
+      res.status(400).json({ error: 'Apenas requisições com status "pendente" podem ser excluídas.' })
+      return
+    }
+
+    // Excluir ações associadas antes da requisição (FK)
+    await pool.query('DELETE FROM acoes_solicitacao WHERE request_id = $1', [requestId])
+    await pool.query('DELETE FROM solicitacoes_compra WHERE id = $1', [requestId])
+
+    await logAudit({
+      userId: user.id,
+      action: 'EXCLUIR_REQUISICAO',
+      resource: 'solicitacoes_compra',
+      resourceId: requestId,
+      ip,
+    })
+
+    res.json({ message: 'Requisição excluída com sucesso' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Erro interno do servidor' })
+  }
+})
+
+// ─── ACTION (Aprovar / Rejeitar) ─────────────────────────────────────────────
 router.post(
   '/:id/action',
   authenticate,

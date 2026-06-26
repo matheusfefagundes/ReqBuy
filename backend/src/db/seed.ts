@@ -232,6 +232,7 @@ async function seed() {
       { user_id: solicitanteId, action: 'CADASTRO',             resource: 'usuarios',           resource_id: solicitanteId, ip_address: '192.168.1.5'  },
       { user_id: solicitanteId, action: 'CRIAR_REQUISICAO',     resource: 'solicitacoes_compra', resource_id: requestIds[0], ip_address: '192.168.1.5' },
       { user_id: solicitanteId, action: 'CRIAR_REQUISICAO',     resource: 'solicitacoes_compra', resource_id: requestIds[1], ip_address: '192.168.1.5' },
+      { user_id: solicitanteId, action: 'EDITAR_REQUISICAO',    resource: 'solicitacoes_compra', resource_id: requestIds[0], ip_address: '192.168.1.5' },
       { user_id: aprovadorId,   action: 'LOGIN',                resource: 'usuarios',           resource_id: aprovadorId,   ip_address: '192.168.1.10' },
       { user_id: aprovadorId,   action: 'APROVADO_REQUISICAO',  resource: 'solicitacoes_compra', resource_id: requestIds[1], ip_address: '192.168.1.10' },
       { user_id: aprovadorId,   action: 'APROVADO_REQUISICAO',  resource: 'solicitacoes_compra', resource_id: requestIds[2], ip_address: '192.168.1.10' },
@@ -240,6 +241,7 @@ async function seed() {
       { user_id: financeiroId,  action: 'LOGIN',                resource: 'usuarios',           resource_id: financeiroId,  ip_address: '192.168.1.20' },
       { user_id: financeiroId,  action: 'APROVADO_REQUISICAO',  resource: 'solicitacoes_compra', resource_id: requestIds[2], ip_address: '192.168.1.20' },
       { user_id: financeiroId,  action: 'REJEITADO_REQUISICAO', resource: 'solicitacoes_compra', resource_id: requestIds[4], ip_address: '192.168.1.20' },
+      { user_id: financeiroId,  action: 'EXCLUIR_REQUISICAO',   resource: 'solicitacoes_compra', resource_id: 999,           ip_address: '192.168.1.20' },
       { user_id: null,          action: 'LOGIN_FALHOU',          resource: 'usuarios',           resource_id: null,          ip_address: '10.0.0.99'    },
     ]
 

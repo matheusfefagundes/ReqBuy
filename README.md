@@ -60,7 +60,7 @@ O sistema implementa três níveis de privilégio:
 
 1. Cadastro e autenticação de usuários com senhas protegidas por bcrypt.
 2. Geração e validação de tokens JWT para sessões autenticadas (8h de validade).
-3. Criação de requisição de compra (título, descrição, valor, setor).
+3. CRUD completo de requisições de compra (Criação, Edição, Listagem e Exclusão).
 4. Listagem de requisições filtrada por perfil (próprias / setor / todas).
 5. Aprovação ou rejeição pelo aprovador do setor (com comentário opcional).
 6. Aprovação ou rejeição final pelo setor financeiro (com comentário opcional).
@@ -75,6 +75,9 @@ O sistema implementa três níveis de privilégio:
 |---|:---:|:---:|:---:|
 | Criar requisição | ✅ | ✅ | ✅ |
 | Ver próprias requisições | ✅ | ✅ | ✅ |
+| Editar própria requisição (pendente) | ✅ | ✅ | ✅ |
+| Excluir própria requisição (pendente) | ✅ | ✅ | ✅ |
+| Excluir qualquer requisição | ❌ | ❌ | ✅ |
 | Ver requisições do setor | ❌ | ✅ | ✅ |
 | Ver todas as requisições | ❌ | ❌ | ✅ |
 | Aprovar / Rejeitar (nível gestor) | ❌ | ✅ | ❌ |
@@ -231,9 +234,11 @@ Todos os eventos são registrados na tabela `audit_logs` com `user_id`, `action`
 | Falha de login | `LOGIN_FALHOU` | POST /api/auth/login com credenciais inválidas |
 | Cadastro de usuário | `CADASTRO` | POST /api/auth/register |
 | Criação de requisição | `CRIAR_REQUISICAO` | POST /api/requests |
+| Edição de requisição | `EDITAR_REQUISICAO` | PUT /api/requests/:id |
+| Exclusão de requisição | `EXCLUIR_REQUISICAO` | DELETE /api/requests/:id |
 | Aprovação de requisição | `APROVADO_REQUISICAO` | POST /api/requests/:id/action |
 | Rejeição de requisição | `REJEITADO_REQUISICAO` | POST /api/requests/:id/action |
-| Tentativa de acesso não autorizado | `ACESSO_NAO_AUTORIZADO` | Aprovador tenta agir em setor diferente do seu |
+| Tentativa de acesso não autorizado | `ACESSO_NAO_AUTORIZADO` | Acesso a rotas sem perfil adequado ou tentar editar/excluir sem permissão |
 
 Consulta de logs disponível exclusivamente ao perfil **Financeiro** via `GET /api/audit`.
 

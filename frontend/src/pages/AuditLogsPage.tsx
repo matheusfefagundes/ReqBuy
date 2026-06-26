@@ -35,6 +35,8 @@ const actionConfig: Record<string, { variant: ActionVariant }> = {
   LOGIN_FALHOU:           { variant: 'danger'  },
   CADASTRO:               { variant: 'accent'  },
   CRIAR_REQUISICAO:       { variant: 'success' },
+  EDITAR_REQUISICAO:      { variant: 'info'    },
+  EXCLUIR_REQUISICAO:     { variant: 'danger'  },
   APROVADO_REQUISICAO:    { variant: 'success' },
   REJEITADO_REQUISICAO:   { variant: 'danger'  },
   ACESSO_NAO_AUTORIZADO:  { variant: 'danger'  },
