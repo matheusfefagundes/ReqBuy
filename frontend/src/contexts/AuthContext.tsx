@@ -15,13 +15,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     api
-      .get<{ user: User }>('/auth/me')
+      .get<{ user: User; csrfToken: string }>('/auth/me')
       .then(({ data }) => {
         sessionStorage.setItem('user', JSON.stringify(data.user))
+        sessionStorage.setItem('csrfToken', data.csrfToken)
         setUser(data.user)
       })
       .catch(() => {
         sessionStorage.removeItem('user')
+        sessionStorage.removeItem('csrfToken')
         setUser(null)
       })
       .finally(() => setLoading(false))
@@ -29,13 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     // o backend emite o token como cookie HttpOnly.
-    // O body da resposta contém apenas os dados do usuário (sem token).
-    const { data } = await api.post<{ message: string; user: User }>('/auth/login', {
+    // O body da resposta contém os dados do usuário e o token CSRF.
+    const { data } = await api.post<{ message: string; user: User; csrfToken: string }>('/auth/login', {
       email,
       password,
     })
-    // Apenas dados não-sensíveis em sessionStorage (sem token)
+    // Apenas dados não-sensíveis em sessionStorage (sem o token JWT)
     sessionStorage.setItem('user', JSON.stringify(data.user))
+    sessionStorage.setItem('csrfToken', data.csrfToken)
     setUser(data.user)
   }
 
@@ -53,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // ignora erros de rede no logout
     } finally {
       sessionStorage.removeItem('user')
+      sessionStorage.removeItem('csrfToken')
       setUser(null)
     }
   }

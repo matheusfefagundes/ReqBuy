@@ -98,11 +98,12 @@ router.post('/login', loginRateLimiter, accountLockoutMiddleware, async (req: Re
     await logAudit({ userId: user.id, action: 'LOGIN', resource: 'usuarios', ip })
 
     // emite token como cookie HttpOnly + Secure
-    setTokenCookie(res, token)
+    const csrfToken = setTokenCookie(res, token)
 
     res.json({
       message: 'Login efetuado com sucesso.',
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      csrfToken,
     })
   } catch (err) {
     console.error(err)
@@ -128,7 +129,8 @@ router.get('/me', authenticateWithBlacklist, async (req: Request, res: Response)
       return
     }
 
-    if (!req.cookies?.reqbuy_csrf) issueCsrfCookie(res)
+    let csrfToken = req.cookies?.reqbuy_csrf
+    if (!csrfToken) csrfToken = issueCsrfCookie(res)
 
     res.json({
       user: {
@@ -138,6 +140,7 @@ router.get('/me', authenticateWithBlacklist, async (req: Request, res: Response)
         role: user.role,
         departmentId: user.department_id,
       },
+      csrfToken,
     })
   } catch (err) {
     console.error(err)

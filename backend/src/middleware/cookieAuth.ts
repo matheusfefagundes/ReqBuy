@@ -4,7 +4,7 @@ import { clearCsrfCookie, issueCsrfCookie } from './csrf'
 const COOKIE_NAME  = 'reqbuy_token'
 const IS_PROD      = process.env.NODE_ENV === 'production'
 
-export function setTokenCookie(res: Response, token: string): void {
+export function setTokenCookie(res: Response, token: string): string {
   res.cookie(COOKIE_NAME, token, {
     httpOnly:  true,          // inacessível via document.cookie / JS
     secure:    IS_PROD,       // HTTPS obrigatório em produção
@@ -12,7 +12,7 @@ export function setTokenCookie(res: Response, token: string): void {
     maxAge:    8 * 60 * 60 * 1000,
     path:      '/',
   })
-  issueCsrfCookie(res)
+  return issueCsrfCookie(res)
 }
 
 export function clearTokenCookie(res: Response): void {

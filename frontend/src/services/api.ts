@@ -5,21 +5,12 @@ const api = axios.create({
   withCredentials: true,   // envia/recebe cookies HttpOnly automaticamente
 })
 
-function readCookie(name: string): string | null {
-  const value = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(`${name}=`))
-    ?.split('=')[1]
-
-  return value ? decodeURIComponent(value) : null
-}
-
-// Token JWT fica em cookie HttpOnly. O token CSRF é legível e enviado em
-// operações mutáveis para proteger o cookie de sessão.
+// Token JWT fica em cookie HttpOnly. O token CSRF é salvo na sessionStorage e enviado
+// em operações mutáveis para proteger contra CSRF em requisições cross-domain.
 api.interceptors.request.use((config) => {
   const method = config.method?.toUpperCase()
   if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    const csrfToken = readCookie('reqbuy_csrf')
+    const csrfToken = sessionStorage.getItem('csrfToken')
     if (csrfToken) config.headers['X-CSRF-Token'] = csrfToken
   }
 
