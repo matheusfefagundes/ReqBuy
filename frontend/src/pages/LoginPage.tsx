@@ -22,8 +22,10 @@ export default function LoginPage() {
       await login(email, password)
       toast.success('Login realizado com sucesso!')
       navigate('/dashboard')
-    } catch {
-      toast.error('E-mail ou senha inválidos.')
+    } catch (err) {
+      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } }
+      const backendMessage = axiosErr?.response?.data?.error
+      toast.error(backendMessage ?? 'E-mail ou senha inválidos.')
     } finally {
       setLoading(false);
     }
